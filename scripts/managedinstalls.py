@@ -1,4 +1,4 @@
-#!/usr/local/munkireport/munkireport-python2
+#!/usr/local/munkireport/munkireport-python3
 """
 Filter the result of /Library/Managed Installs/ManagedInstallReport.plist
 to only the parts that represent the installed items
@@ -28,7 +28,7 @@ else:
 # Don't skip manual check
 if len(sys.argv) > 1:
     if sys.argv[1] == 'debug':
-        print '**** DEBUGGING ENABLED ****'
+        print('**** DEBUGGING ENABLED ****')
         DEBUG = True
         import pprint
         PP = pprint.PrettyPrinter(indent=4)
@@ -37,8 +37,9 @@ if len(sys.argv) > 1:
 def dict_from_plist(path):
     """Returns a dict based on plist found in path"""
     try:
-        return plistlib.readPlist(path)
-    except Exception, message:
+        with open(path, 'rb') as fp:
+            return plistlib.load(fp)
+    except Exception as message:
         raise Exception("Error creating plist from output: %s" % message)
 
 
@@ -96,7 +97,7 @@ def install_result(item_list, install_list):
         else:
             name = item['name']
 
-        if item.status == 0:
+        if item['status'] == 0:
             install_list[name]['installed'] = True
             install_list[name]['status'] = 'install_succeeded'
         else:
@@ -128,7 +129,7 @@ def main():
 
     # Check if MANAGED_INSTALL_REPORT exists
     if not os.path.exists(MANAGED_INSTALL_REPORT):
-        print '%s is missing.' % MANAGED_INSTALL_REPORT
+        print('%s is missing.' % MANAGED_INSTALL_REPORT)
         install_report = {}
     else:
         install_report = dict_from_plist(MANAGED_INSTALL_REPORT)
@@ -136,35 +137,36 @@ def main():
     # pylint: disable=E1103
     install_list = {}
     if install_report.get('ManagedInstalls'):
-        add_items(install_report.ManagedInstalls, install_list,
+        add_items(install_report['ManagedInstalls'], install_list,
                   'installed', 'munki')
     if install_report.get('AppleUpdates'):
-        add_items(install_report.AppleUpdates, install_list,
+        add_items(install_report['AppleUpdates'], install_list,
                   'pending_install', 'applesus')
     if install_report.get('ProblemInstalls'):
-        add_items(install_report.ProblemInstalls, install_list,
+        add_items(install_report['ProblemInstalls'], install_list,
                   'install_failed', 'munki')
     if install_report.get('ItemsToRemove'):
-        add_items(install_report.ItemsToRemove, install_list,
+        add_items(install_report['ItemsToRemove'], install_list,
                   'pending_removal', 'munki')
     if install_report.get('RemovedItems'):
         add_removeditems(install_report.RemovedItems, install_list)
     if install_report.get('ItemsToInstall'):
-        add_items(install_report.ItemsToInstall, install_list,
+        add_items(install_report['ItemsToInstall'], install_list,
                   'pending_install', 'munki')
 
     # Update install_list with results
     if install_report.get('RemovalResults'):
-        remove_result(install_report.RemovalResults, install_list)
+        remove_result(install_report['RemovalResults'], install_list)
     if install_report.get('InstallResults'):
-        install_result(install_report.InstallResults, install_list)
+        install_result(install_report['InstallResults'], install_list)
     # pylint: enable=E1103
 
     if DEBUG:
         PP.pprint(install_list)
 
     # Write report to cache
-    plistlib.writePlist(install_list, "%s/managedinstalls.plist" % cachedir)
+    with open("%s/managedinstalls.plist" % cachedir, 'wb') as fp:
+        plistlib.dump(install_list, fp)
 
 if __name__ == "__main__":
     main()
