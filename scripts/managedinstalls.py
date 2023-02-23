@@ -122,10 +122,6 @@ def filter_item(item):
 
 def main():
     """Main"""
-    # Create cache dir if it does not exist
-    cachedir = '%s/cache' % os.path.dirname(os.path.realpath(__file__))
-    if not os.path.exists(cachedir):
-        os.makedirs(cachedir)
 
     # Check if MANAGED_INSTALL_REPORT exists
     if not os.path.exists(MANAGED_INSTALL_REPORT):
@@ -149,7 +145,7 @@ def main():
         add_items(install_report['ItemsToRemove'], install_list,
                   'pending_removal', 'munki')
     if install_report.get('RemovedItems'):
-        add_removeditems(install_report.RemovedItems, install_list)
+        add_removeditems(install_report['RemovedItems'], install_list)
     if install_report.get('ItemsToInstall'):
         add_items(install_report['ItemsToInstall'], install_list,
                   'pending_install', 'munki')
@@ -165,6 +161,7 @@ def main():
         PP.pprint(install_list)
 
     # Write report to cache
+    cachedir = '%s/cache' % os.path.dirname(os.path.realpath(__file__))
     with open("%s/managedinstalls.plist" % cachedir, 'wb') as fp:
         plistlib.dump(install_list, fp)
 
