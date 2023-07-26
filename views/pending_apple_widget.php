@@ -3,7 +3,7 @@
 		<div class="card-header" data-container="body" data-i18n="[title]managedinstalls.widget.pending_apple.tooltip">
 			<i class="fa fa-apple"></i>
             <span data-i18n="managedinstalls.widget.pending_apple.title"></span>
-            <a href="/module/managedinstalls/listing/#pending_install" class="pull-right text-reset"><i class="fa fa-list"></i></a>
+            <a href="/module/managedinstalls/listing/#pending_install" class="pull-right"><i class="fa fa-list"></i></a>
 		</div>
 		<div class="list-group scroll-box"></div>
 	</div>
@@ -20,11 +20,11 @@ $(document).on('appUpdate', function(e, lang) {
 
 		if(data.length){
 			$.each(data, function(i,d){
-				var badge = '<span class="badge badge-light pull-right">'+d.count+'</span>',
+				var badge = '<span class="badge badge-secondary pull-right">'+d.count+'</span>',
                     url = appUrl+'/module/managedinstalls/listing/'+d.name+'#pending_install',
                     display_name = d.display_name || d.name;
 
-				box.append('<a href="'+url+'" class="list-group-item">'+display_name+' '+d.version+badge+'</a>');
+				box.append('<a href="'+url+'" class="list-group-item list-group-item-action">'+display_name+' '+d.version+badge+'</a>');
 			});
 		}
 		else{
