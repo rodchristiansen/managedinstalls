@@ -6,7 +6,7 @@ use munkireport\processors\Processor;
 class Managedinstalls_processor extends Processor
 {
     private $timestamp;
-    
+
     public function run($plist)
     {
         $this->timestamp = date('Y-m-d H:i:s');
@@ -36,6 +36,7 @@ class Managedinstalls_processor extends Processor
             'installed' => 0,
             'status' => '',
             'type' => '',
+            'munki_timestamp' => null,
         ];
 
         $new_installs = [];
@@ -69,6 +70,11 @@ class Managedinstalls_processor extends Processor
             if (isset($props['installed_size'])) {
                 $temp['size'] = $props['installed_size'];
             }
+            
+            // Set timestamp
+            if (isset($props['timestamp'])) {
+                $temp['munki_timestamp'] = $props['timestamp'];
+            }
 
             $save_array[] = $temp;
 
@@ -91,7 +97,7 @@ class Managedinstalls_processor extends Processor
 
         return $this;
     }
-        
+
     private function _storeEvents($new_installs, $uninstalls)
     {
         if ($new_installs) {

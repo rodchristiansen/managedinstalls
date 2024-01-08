@@ -15,6 +15,7 @@ class Managedinstalls_model extends Eloquent
       'installed',
       'status',
       'type',
+      'munki_timestamp',
     ];
 
     public $timestamps = false;

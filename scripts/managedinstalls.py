@@ -8,6 +8,7 @@ import plistlib
 import sys
 import os
 import CoreFoundation
+import time
 
 DEBUG = False
 # Path to the default munki install dir
@@ -21,9 +22,14 @@ managed_install_dir = CoreFoundation.CFPreferencesCopyAppValue(
 if managed_install_dir:
     MANAGED_INSTALL_REPORT = os.path.join(
         managed_install_dir, 'ManagedInstallReport.plist')
+    MANAGED_INSTALL_LOG = os.path.join(
+        managed_install_dir, 'Logs/Install.log')
+
 else:
     MANAGED_INSTALL_REPORT = os.path.join(
         default_install_dir, 'ManagedInstallReport.plist')
+    MANAGED_INSTALL_LOG = os.path.join(
+        default_install_dir, 'Logs/Install.log')
 
 # Don't skip manual check
 if len(sys.argv) > 1:
@@ -43,7 +49,7 @@ def dict_from_plist(path):
         raise Exception("Error creating plist from output: %s" % message)
 
 
-def add_items(item_list, install_list, status, item_type):
+def add_items(item_list, install_list, status, item_type, log=""):
     """Add item to list and set status"""
     for item in item_list:
         # Check if applesus item
@@ -52,17 +58,37 @@ def add_items(item_list, install_list, status, item_type):
         else:
             name = item['name']
 
-        install_list[name] = filter_item(item)
+        if log != "":
+            install_list[name] = filter_item_log(item, name, log)
+        else:
+            install_list[name] = filter_item(item)
+
         install_list[name]['status'] = status
         install_list[name]['type'] = item_type
 
 
-def add_removeditems(item_list, install_list):
+def add_removeditems(item_list, install_list, log):
     """Add removed item to list and set status"""
-    for item in item_list:
-        install_list[item] = {'name': item, 'status': 'removed',
-                              'installed': False, 'display_name': item,
-                              'type': 'munki'}
+
+    if log != "":
+        for item in item_list:
+            install_list[item] = {'name': item, 'status': 'removed',
+                                  'installed': False, 'display_name': item,
+                                  'type': 'munki'}
+
+            # Try to get the removal time from The Log™
+            log_search = " Removal of "+item+": SUCCESSFUL"
+            matched_line = [i for i in log if log_search in i]
+
+            if matched_line != []:
+                timestamp = string_to_time(matched_line[0].split(" Removal of ")[0])
+                install_list[item].update({"timestamp": timestamp})
+
+    else:
+        for item in item_list:
+            install_list[item] = {'name': item, 'status': 'removed',
+                                  'installed': False, 'display_name': item,
+                                  'type': 'munki'}
 
 
 def remove_result(item_list, install_list):
@@ -120,6 +146,47 @@ def filter_item(item):
     return out
 
 
+def filter_item_log(item, name, log):
+    """Only return specified keys"""
+    keys = ["display_name", "installed_version", "installed_size",
+            "version_to_install", "installed", "note"]
+
+    out = {}
+    for key in keys:
+        try:
+            out[key] = item[key]
+        # pylint: disable=pointless-except
+        except KeyError:  # not all objects have all these attributes
+            pass
+
+    # Search for display name by default, if that fails search for by name
+    if "display_name" in out and out["display_name"] != "":
+        search_name = out["display_name"]
+    else:
+        search_name = name
+
+    # Try to get the install time from The Log™
+    if "installed_version" in out:
+        log_search = " Install of "+search_name+"-"+out["installed_version"]+": SUCCESSFUL"
+        matched_line = [i for i in log if log_search in i]
+
+        if matched_line != []:
+            timestamp = string_to_time(matched_line[0].split(" Install of ")[0])
+            out.update({"timestamp": timestamp})
+
+    return out
+
+
+def string_to_time(date_time):
+
+    if (date_time == "0" or date_time == 0):
+        return ""
+    else:
+        try:
+            return str(int(time.mktime(time.strptime(str(date_time), '%b %d %Y %H:%M:%S %z'))))
+        except Exception:
+            return date_time
+
 def main():
     """Main"""
 
@@ -130,11 +197,25 @@ def main():
     else:
         install_report = dict_from_plist(MANAGED_INSTALL_REPORT)
 
+    # Check if MANAGED_INSTALL_LOG exists
+    if not os.path.exists(MANAGED_INSTALL_LOG):
+        print('%s is missing.' % MANAGED_INSTALL_LOG)
+        install_log = ""
+    else:
+        file = open(MANAGED_INSTALL_LOG, "r")
+        log_content = file.read()
+        file.close()
+
+        install_log = []
+        for line in log_content.split("\n"):
+            install_log.insert(0, line)
+
     # pylint: disable=E1103
     install_list = {}
     if install_report.get('ManagedInstalls'):
+        # Log search
         add_items(install_report['ManagedInstalls'], install_list,
-                  'installed', 'munki')
+                  'installed', 'munki', install_log)
     if install_report.get('AppleUpdates'):
         add_items(install_report['AppleUpdates'], install_list,
                   'pending_install', 'applesus')
@@ -145,7 +226,8 @@ def main():
         add_items(install_report['ItemsToRemove'], install_list,
                   'pending_removal', 'munki')
     if install_report.get('RemovedItems'):
-        add_removeditems(install_report['RemovedItems'], install_list)
+        # Log search
+        add_removeditems(install_report['RemovedItems'], install_list, install_log)
     if install_report.get('ItemsToInstall'):
         add_items(install_report['ItemsToInstall'], install_list,
                   'pending_install', 'munki')

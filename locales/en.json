@@ -5,6 +5,7 @@
     "no_updates_pending": "No Updates Pending",
     "report": "Managed Installs Report",
     "title": "Managed Installs",
+    "timestamp": "Date Processed",
     "widget": {
         "pending": {
             "title": "Clients With Pending Installs"

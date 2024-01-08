@@ -3,7 +3,7 @@
 $factory->define(Managedinstalls_model::class, function (Faker\Generator $faker) {
 
     $type = $faker->randomElement(['munki', 'applesus']);
-    
+
     switch ($type) {
         case 'munki':
             $installs = [
@@ -36,5 +36,6 @@ $factory->define(Managedinstalls_model::class, function (Faker\Generator $faker)
         'installed' => $faker->numberBetween(1000000, 10000000),
         'status' => $faker->randomElement(['install_failed', 'install_succeeded', 'installed', 'pending_install', 'pending_removal', 'removed', 'uninstall_failed', 'uninstalled']),
         'type' => $type,
+        'munki_timestamp' => $faker->dateTimeBetween('-1 month')->format('U'),
     ];
 });
