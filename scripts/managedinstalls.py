@@ -9,14 +9,19 @@ import sys
 import os
 import CoreFoundation
 import time
+import string
 
 DEBUG = False
 # Path to the default munki install dir
 default_install_dir = '/Library/Managed Installs'
 
-# Checks munki preferences to see where the install directory is set to.
+# Checks munki preferences to see where the install directory is set to
 managed_install_dir = CoreFoundation.CFPreferencesCopyAppValue(
     "ManagedInstallDir", "ManagedInstalls")
+
+# Checks munki preferences to see where the ManagedSoftwareUpdate.log (and Install.log) is set
+log_file = CoreFoundation.CFPreferencesCopyAppValue(
+    "ManagedInstallDir", "LogFile")
 
 # set the paths based on munki's configuration.
 if managed_install_dir:
@@ -30,6 +35,9 @@ else:
         default_install_dir, 'ManagedInstallReport.plist')
     MANAGED_INSTALL_LOG = os.path.join(
         default_install_dir, 'Logs/Install.log')
+
+if log_file:
+    MANAGED_INSTALL_LOG = log_file.replace( "ManagedSoftwareUpdate.log", "Install.log")
 
 # Don't skip manual check
 if len(sys.argv) > 1:
