@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Remove previous script and plist from preflight.d
-rm -f "${MUNKIPATH}preflight.d/managedinstalls.py"
-rm -f "${MUNKIPATH}preflight.d/cache/managedinstalls.plist"
-
 # managedinstalls controller
 CTL="${BASEURL}index.php?/module/managedinstalls/"
 

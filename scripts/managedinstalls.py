@@ -10,31 +10,28 @@ import os
 import CoreFoundation
 import time
 import string
+import datetime
 
+# This prints out the cache file to Terminal
 DEBUG = False
+
 # Path to the default munki install dir
 default_install_dir = '/Library/Managed Installs'
 
 # Checks munki preferences to see where the install directory is set to
-managed_install_dir = CoreFoundation.CFPreferencesCopyAppValue(
-    "ManagedInstallDir", "ManagedInstalls")
+managed_install_dir = CoreFoundation.CFPreferencesCopyAppValue("ManagedInstallDir", "ManagedInstalls")
 
 # Checks munki preferences to see where the ManagedSoftwareUpdate.log (and Install.log) is set
-log_file = CoreFoundation.CFPreferencesCopyAppValue(
-    "ManagedInstallDir", "LogFile")
+log_file = CoreFoundation.CFPreferencesCopyAppValue( "ManagedInstallDir", "LogFile")
 
 # set the paths based on munki's configuration.
 if managed_install_dir:
-    MANAGED_INSTALL_REPORT = os.path.join(
-        managed_install_dir, 'ManagedInstallReport.plist')
-    MANAGED_INSTALL_LOG = os.path.join(
-        managed_install_dir, 'Logs/Install.log')
+    MANAGED_INSTALL_REPORT = os.path.join(managed_install_dir, 'ManagedInstallReport.plist')
+    MANAGED_INSTALL_LOG = os.path.join(managed_install_dir, 'Logs/Install.log')
 
 else:
-    MANAGED_INSTALL_REPORT = os.path.join(
-        default_install_dir, 'ManagedInstallReport.plist')
-    MANAGED_INSTALL_LOG = os.path.join(
-        default_install_dir, 'Logs/Install.log')
+    MANAGED_INSTALL_REPORT = os.path.join(default_install_dir, 'ManagedInstallReport.plist')
+    MANAGED_INSTALL_LOG = os.path.join(default_install_dir, 'Logs/Install.log')
 
 if log_file:
     MANAGED_INSTALL_LOG = log_file.replace( "ManagedSoftwareUpdate.log", "Install.log")
@@ -44,18 +41,6 @@ if len(sys.argv) > 1:
     if sys.argv[1] == 'debug':
         print('**** DEBUGGING ENABLED ****')
         DEBUG = True
-        import pprint
-        PP = pprint.PrettyPrinter(indent=4)
-
-
-def dict_from_plist(path):
-    """Returns a dict based on plist found in path"""
-    try:
-        with open(path, 'rb') as fp:
-            return plistlib.load(fp)
-    except Exception as message:
-        raise Exception("Error creating plist from output: %s" % message)
-
 
 def add_items(item_list, install_list, status, item_type, log=""):
     """Add item to list and set status"""
@@ -102,28 +87,31 @@ def add_removeditems(item_list, install_list, log):
 def remove_result(item_list, install_list):
     """Update list according to result"""
     for item in item_list:
-        # install_list[item['name']]['time'] = item.time
-        if item.status == 0:
+        if 'time' in item:
+            install_list[item['name']]['timestamp'] = str(int(time.mktime(item['time'].timetuple())))
+
+        if item['status'] == 0:
             install_list[item['name']]['installed'] = False
             install_list[item['name']]['status'] = 'uninstalled'
         else:
             install_list[item['name']]['status'] = 'uninstall_failed'
 
-        # Sometimes an item is only in RemovalResults, so we have to add
-        # extra info:
+        # Sometimes an item is only in RemovalResults, 
+        # so we have to add extra info:
 
         # Add munki
         install_list[item['name']]['type'] = 'munki'
 
         # Fix display name
         if not install_list[item['name']].get('display_name'):
-            install_list[item['name']]['display_name'] = item.display_name
+            install_list[item['name']]['display_name'] = item['display_name']
 
 
 def install_result(item_list, install_list):
     """Update list according to result"""
     for item in item_list:
-        # install_list[item['name']]['time'] = item.time
+        if 'time' in item:
+            install_list[item['name']]['timestamp'] = str(int(time.mktime(item['time'].timetuple())))
 
         # Check if applesus item
         if item.get('productKey'):
@@ -203,7 +191,11 @@ def main():
         print('%s is missing.' % MANAGED_INSTALL_REPORT)
         install_report = {}
     else:
-        install_report = dict_from_plist(MANAGED_INSTALL_REPORT)
+        try:
+            with open(MANAGED_INSTALL_REPORT, 'rb') as fp:
+                install_report = plistlib.load(fp)
+        except Exception as message:
+            raise Exception("Error creating plist from output: %s" % message)
 
     # Check if MANAGED_INSTALL_LOG exists
     if not os.path.exists(MANAGED_INSTALL_LOG):
@@ -222,23 +214,18 @@ def main():
     install_list = {}
     if install_report.get('ManagedInstalls'):
         # Log search
-        add_items(install_report['ManagedInstalls'], install_list,
-                  'installed', 'munki', install_log)
+        add_items(install_report['ManagedInstalls'], install_list, 'installed', 'munki', install_log)
     if install_report.get('AppleUpdates'):
-        add_items(install_report['AppleUpdates'], install_list,
-                  'pending_install', 'applesus')
+        add_items(install_report['AppleUpdates'], install_list, 'pending_install', 'applesus')
     if install_report.get('ProblemInstalls'):
-        add_items(install_report['ProblemInstalls'], install_list,
-                  'install_failed', 'munki')
+        add_items(install_report['ProblemInstalls'], install_list, 'install_failed', 'munki')
     if install_report.get('ItemsToRemove'):
-        add_items(install_report['ItemsToRemove'], install_list,
-                  'pending_removal', 'munki')
+        add_items(install_report['ItemsToRemove'], install_list, 'pending_removal', 'munki')
     if install_report.get('RemovedItems'):
         # Log search
         add_removeditems(install_report['RemovedItems'], install_list, install_log)
     if install_report.get('ItemsToInstall'):
-        add_items(install_report['ItemsToInstall'], install_list,
-                  'pending_install', 'munki')
+        add_items(install_report['ItemsToInstall'], install_list, 'pending_install', 'munki')
 
     # Update install_list with results
     if install_report.get('RemovalResults'):
@@ -248,7 +235,7 @@ def main():
     # pylint: enable=E1103
 
     if DEBUG:
-        PP.pprint(install_list)
+        print(install_list)
 
     # Write report to cache
     cachedir = '%s/cache' % os.path.dirname(os.path.realpath(__file__))
