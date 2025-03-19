@@ -1,6 +1,6 @@
 {
     "name": "munkireport/managedinstalls",
-    "description": "Module for munkireport.",
+    "description": "Managed installs module compatible with Munki (macOS) and Cimian (Windows).",
     "license": "MIT",
-    "version": "6.0.0-beta1"
+    "version": "6.0.0"
 }

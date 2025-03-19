@@ -9,108 +9,121 @@ class Managedinstalls_processor extends Processor
     {
         $this->timestamp = date('Y-m-d H:i:s');
 
-        if (! $plist) {
+        if (!$plist) {
             throw new Exception(
-                "Error Processing Request: No property list found", 1
+                "Error Processing Request: No property list or data found",
+                1
             );
         }
 
+        if ($this->client_type === 'cimian') {
+            $this->processCimianData($plist);
+        } else {
+            $this->processMunkiData($plist);
+        }
+    }
+
+    private function processCimianData($json)
+    {
+        $data = json_decode($json, true);
+
+        if (!isset($data['softwareInventory'])) {
+            throw new Exception("Invalid Cimian data: missing softwareInventory", 1);
+        }
+
+        // Delete old entries
+        Managedinstalls_model::where('serial_number', $this->serial_number)
+            ->where('client_type', 'cimian')->delete();
+
+        $save_array = [];
+
+        foreach ($data['softwareInventory'] as $software) {
+            $save_array[] = [
+                'serial_number' => $this->serial_number,
+                'name' => $software['name'],
+                'version' => $software['version'],
+                'status' => $software['status'],
+                'install_date' => $this->convertWindowsDate($software['installDate']),
+                'client_type' => 'cimian',
+                'install_source' => $software['source'] ?? null,
+            ];
+        }
+
+        Managedinstalls_model::insertChunked($save_array);
+    }
+
+    private function processMunkiData($plist)
+    {
         $parser = new CFPropertyList();
         $parser->parse($plist, CFPropertyList::FORMAT_XML);
-        if( ! $mylist = $parser->toArray()){
+        if (!$mylist = $parser->toArray()) {
             return;
         }
 
         // Delete old entries
-        Managedinstalls_model::where('serial_number', $this->serial_number)->delete();
+        Managedinstalls_model::where('serial_number', $this->serial_number)
+            ->where('client_type', 'munki')->delete();
 
-        // List with fillable entries
-        $fillable = [
-            'serial_number' => $this->serial_number, 
-            'name' => '',
-            'display_name' => '',
-            'version' => '',
-            'size' => 0,
-            'installed' => 0,
-            'status' => '',
-            'type' => '',
-        ];
-
+        $save_array = [];
         $new_installs = [];
         $uninstalls = [];
-        $save_array = [];
 
-        # Loop through list
         foreach ($mylist as $name => $props) {
-            // Get an instance of the fillable array
-            $temp = $fillable;
-
-            // Add name to temp
-            $temp['name'] = $name;
-
-            // Copy values and correct type
-            foreach ($temp as $key => $value) {
-                if (array_key_exists($key, $props)) {
-                    $temp[$key] = $props[$key];
-                    settype($temp[$key], gettype($value));
-                }
-            }
-
-            // Set version
-            if (isset($props['installed_version'])) {
-                $temp['version'] = $props['installed_version'];
-            } elseif (isset($props['version_to_install'])) {
-                $temp['version'] = $props['version_to_install'];
-            }
-
-            // Set installed size
-            if (isset($props['installed_size'])) {
-                $temp['size'] = $props['installed_size'];
-            }
+            $temp = [
+                'serial_number' => $this->serial_number,
+                'name' => $name,
+                'version' => $props['installed_version'] ?? $props['version_to_install'] ?? '',
+                'status' => $props['install_status'] ?? '',
+                'install_date' => $props['installed'] ?? null,
+                'client_type' => 'munki',
+                'install_source' => null,
+            ];
 
             $save_array[] = $temp;
 
-            // Store new installs
-            if ($temp['status'] == 'install_succeeded') {
+            if ($temp['status'] === 'install_succeeded') {
                 $new_installs[] = $temp;
             }
 
-            // Store uninstalls
-            if ($temp['status'] == 'uninstalled') {
+            if ($temp['status'] === 'uninstalled') {
                 $uninstalls[] = $temp;
             }
         }
 
-        $model = Managedinstalls_model::insertChunked(
-            $save_array
-        );
+        Managedinstalls_model::insertChunked($save_array);
 
         $this->_storeEvents($new_installs, $uninstalls);
-
-        return $this;
     }
-        
+
+    private function convertWindowsDate($windowsDate)
+    {
+        if (!$windowsDate) return null;
+
+        $dt = DateTime::createFromFormat('Ymd', $windowsDate);
+
+        return $dt ? $dt->format('Y-m-d H:i:s') : null;
+    }
+
     private function _storeEvents($new_installs, $uninstalls)
     {
         if ($new_installs) {
             $count = count($new_installs);
-            $msg = array('count' => $count);
+            $msg = ['count' => $count];
             if ($count == 1) {
                 $pkg = array_pop($new_installs);
-                $msg['pkg'] = $pkg['display_name'] . ' ' . $pkg['version'];
+                $msg['pkg'] = $pkg['name'] . ' ' . $pkg['version'];
             }
             $this->store_event(
                 'success',
                 'munki.package_installed',
                 json_encode($msg)
             );
-        }
-        elseif ($uninstalls) {
+        } elseif ($uninstalls) {
             $count = count($uninstalls);
-            $msg = array('count' => $count);
+            $msg = ['count' => $count];
             if ($count == 1) {
                 $pkg = array_pop($uninstalls);
-                $msg['pkg'] = $pkg['display_name'] . ' ' . $pkg['version'];
+                $msg['pkg'] = $pkg['name'] . ' ' . $pkg['version'];
             }
             $this->store_event(
                 'success',

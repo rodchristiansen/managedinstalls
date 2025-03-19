@@ -7,27 +7,20 @@
 		</div>
 		<div class="list-group scroll-box"></div>
 	</div>
-</div><!-- /col -->
+</div>
 
 <script>
-
 $(document).on('appUpdate', function(e, lang) {
-
-
-	$.getJSON( appUrl + '/module/managedinstalls/get_pending_installs/applesus', function( data ) {
-
-        var box = $('#pending-apple-widget div.scroll-box').empty();
-
+	var box = $('#pending-apple-widget div.scroll-box').empty();
+	$.getJSON(appUrl + '/module/managedinstalls/get_pending_installs/applesus', function(data) {
 		if(data.length){
 			$.each(data, function(i,d){
 				var badge = '<span class="badge badge-light pull-right">'+d.count+'</span>',
                     url = appUrl+'/module/managedinstalls/listing/'+d.name+'#pending_install',
                     display_name = d.display_name || d.name;
-
 				box.append('<a href="'+url+'" class="list-group-item">'+display_name+' '+d.version+badge+'</a>');
 			});
-		}
-		else{
+		} else {
 			box.append('<span class="list-group-item">'+i18n.t('managedinstalls.no_updates_pending')+'</span>');
 		}
 	});

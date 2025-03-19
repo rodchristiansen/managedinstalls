@@ -2,7 +2,10 @@
 
 return array(
     'listings' => array(
-        'managed_installs' => array('view' => 'managed_installs_listing', 'i18n' => 'managedinstalls.title'),
+        'managed_installs' => array(
+            'view' => 'managed_installs_listing',
+            'i18n' => 'managedinstalls.title',
+        ),
     ),
     'widgets' => array(
         'get_failing' => array('view' => 'get_failing_widget'),
@@ -12,6 +15,13 @@ return array(
         'pending' => array('view' => 'pending_widget'),
     ),
     'reports' => array(
-        array('view' => 'pkg_stats', 'i18n' => 'managedinstalls.installratio_report'),
+        array(
+            'view' => 'pkg_stats',
+            'i18n' => 'managedinstalls.installratio_report',
+        ),
+    ),
+    'client_types' => array(
+        'munki',
+        'cimian',
     ),
 );

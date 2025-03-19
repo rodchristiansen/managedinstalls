@@ -6,20 +6,13 @@
     "report": "Managed Installs Report",
     "title": "Managed Installs",
     "widget": {
-        "pending": {
-            "title": "Clients With Pending Installs"
-        },
-        "pending_apple": {
-            "title": "Pending Apple Updates",
-            "tooltip": "Pending Apple updates for this week"
-        },
-        "pending_munki": {
-            "title": "Pending Installs",
-            "tooltip": "Pending installs for this week"
-        },
-        "pending_removals_munki": {
-            "title": "Pending Removals",
-            "tooltip": "Pending removals for this week"
-        }
+        "pending": {"title": "Clients With Pending Installs"},
+        "pending_apple": {"title": "Pending Apple Updates", "tooltip": "Pending Apple updates for this week"},
+        "pending_munki": {"title": "Pending Installs", "tooltip": "Pending installs for this week"},
+        "pending_removals_munki": {"title": "Pending Removals", "tooltip": "Pending removals for this week"}
+    },
+    "client_type": {
+        "munki": "Munki (macOS)",
+        "cimian": "Cimian (Windows)"
     }
 }

@@ -1,29 +1,24 @@
-// Global object to hold the variables
+// Global object to hold variables
 var managedInstallsVariables = {
     pkgName: '',
-    pkgVersion: ''
-}
+    pkgVersion: '',
+    clientType: ''
+};
 
-// Init function
-var initializeManagedInstalls = function(pkgName, pkgVersion){
-    // Save the variables to the global space so the filter can use them
+// Initialize managed installs view
+var initializeManagedInstalls = function(pkgName, pkgVersion, clientType){
     managedInstallsVariables.pkgName = decodeURIComponent(pkgName);
     managedInstallsVariables.pkgVersion = decodeURIComponent(pkgVersion);
-    if(pkgName){
-        // Set name on heading
-        $('h3>span:first').text(managedInstallsVariables.pkgName);
+    managedInstallsVariables.clientType = decodeURIComponent(clientType || '');
 
-        if(pkgVersion){
-            // Add version to heading
-            $('h3>span:first').text(managedInstallsVariables.pkgName + ' ('+managedInstallsVariables.pkgVersion+')');
-        }
-    }
-}
+    let headingText = managedInstallsVariables.pkgName;
+    if(pkgVersion) headingText += ' (' + managedInstallsVariables.pkgVersion + ')';
 
-// Filters
+    $('h3>span:first').text(headingText);
+};
+
+// Filter function
 var managedInstallsFilter = function(colNumber, d){
-
-    // Add where array to filter the results
     d.where = [];
 
     if(managedInstallsVariables.pkgName){
@@ -41,15 +36,23 @@ var managedInstallsFilter = function(colNumber, d){
             });
         }
     }
-}
 
-// Formatters
-var managedInstallStatus = function(colNumber, row){
-    // Show label depending on status
-    var col = $('td:eq('+colNumber+')', row),
-        status = col.text();
-    if(mr.statusFormat[status]){
-        status = '<span class = "label label-'+mr.statusFormat[status].type+'">'+status+'</span>'
+    if(managedInstallsVariables.clientType){
+        d.where.push({
+            table: 'managedinstalls',
+            column: 'client_type',
+            value: managedInstallsVariables.clientType
+        });
     }
-    col.html(status)
-}
+};
+
+// Formatter function for install status
+var managedInstallStatus = function(colNumber, row){
+    var col = $('td:eq(' + colNumber + ')', row),
+        status = col.text();
+
+    if(mr.statusFormat[status]){
+        status = '<span class="label label-' + mr.statusFormat[status].type + '">' + status + '</span>';
+    }
+    col.html(status);
+};
