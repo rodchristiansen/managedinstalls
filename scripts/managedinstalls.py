@@ -88,7 +88,7 @@ def remove_result(item_list, install_list):
     """Update list according to result"""
     for item in item_list:
         if 'time' in item:
-            install_list[item['name']]['timestamp'] = str(int(time.mktime(item['time'].timetuple())))
+            install_list[item['name']]['timestamp'] = str(int(item['time'].replace(tzinfo=datetime.timezone.utc).timestamp()))
 
         if item['status'] == 0:
             install_list[item['name']]['installed'] = False
@@ -111,7 +111,7 @@ def install_result(item_list, install_list):
     """Update list according to result"""
     for item in item_list:
         if 'time' in item:
-            install_list[item['name']]['timestamp'] = str(int(time.mktime(item['time'].timetuple())))
+            install_list[item['name']]['timestamp'] = str(int(item['time'].replace(tzinfo=datetime.timezone.utc).timestamp()))
 
         # Check if applesus item
         if item.get('productKey'):
@@ -174,14 +174,20 @@ def filter_item_log(item, name, log):
 
 
 def string_to_time(date_time):
+    # Returns UTC timestamp from local time zone string
 
     if (date_time == "0" or date_time == 0):
         return ""
     else:
         try:
-            return str(int(time.mktime(time.strptime(str(date_time), '%b %d %Y %H:%M:%S %z'))))
+            # Munki 7 and newer log
+            return str(int(time.mktime(time.strptime(str(date_time), '%Y-%m-%d %H:%M:%S.%f%z')))) # 2025-07-20 07:22:52.533-05:00
         except Exception:
-            return date_time
+            try:
+                # Munki 6 and older log
+                return str(int(time.mktime(time.strptime(str(date_time), '%b %d %Y %H:%M:%S %z')))) # Jul 06 2025 06:19:55 -0500
+            except Exception:
+                return date_time
 
 def main():
     """Main"""

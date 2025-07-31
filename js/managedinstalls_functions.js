@@ -49,7 +49,7 @@ var managedInstallStatus = function(colNumber, row){
     var col = $('td:eq('+colNumber+')', row),
         status = col.text();
     if(mr.statusFormat[status]){
-        status = '<span class = "label label-'+mr.statusFormat[status].type+'">'+status+'</span>'
+        status = '<span class = "label label-'+mr.statusFormat[status].type+'">'+status.charAt(0).toUpperCase() + status.slice(1).replace("_i", ' I').replace("_s", ' S').replace("_r", ' R').replace("_f", ' F')+'</span>'
     }
     col.html(status)
 }
