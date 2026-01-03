@@ -68,8 +68,8 @@ def add_removeditems(item_list, install_list):
 def remove_result(item_list, install_list):
     """Update list according to result"""
     for item in item_list:
-        # install_list[item['name']]['time'] = item.time
-        if item.status == 0:
+        # install_list[item['name']]['time'] = item['time']
+        if item['status'] == 0:
             install_list[item['name']]['installed'] = False
             install_list[item['name']]['status'] = 'uninstalled'
         else:
@@ -83,7 +83,7 @@ def remove_result(item_list, install_list):
 
         # Fix display name
         if not install_list[item['name']].get('display_name'):
-            install_list[item['name']]['display_name'] = item.display_name
+            install_list[item['name']]['display_name'] = item['display_name']
 
 
 def install_result(item_list, install_list):
@@ -97,7 +97,7 @@ def install_result(item_list, install_list):
         else:
             name = item['name']
 
-        if item.status == 0:
+        if item['status'] == 0:
             install_list[name]['installed'] = True
             install_list[name]['status'] = 'install_succeeded'
         else:
